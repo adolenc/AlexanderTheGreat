@@ -1,11 +1,6 @@
 module Main where
 
-import Prelude
-import Src.Data.Tangle
 import Src.Alexander
-import Src.Data.KnotComplex
-import Src.Control.Monad.VectorSpace
-
 
 example :: Tangle
 example (a,b) = do

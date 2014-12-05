@@ -1,4 +1,9 @@
-module Src.Alexander where
+module Src.Alexander
+(
+  module Src.Data.Tangle
+, untangle
+)
+where
 
 import Src.Data.Tangle
 import Src.Data.KnotComplex
