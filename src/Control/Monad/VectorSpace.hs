@@ -1,6 +1,6 @@
 {-# LANGUAGE MultiParamTypeClasses,FlexibleInstances,FunctionalDependencies,GeneralizedNewtypeDeriving #-}
 
-module Src.Control.Monad.VectorSpace where
+module Control.Monad.VectorSpace where
 
 import Control.Monad
 import qualified Data.Map as M

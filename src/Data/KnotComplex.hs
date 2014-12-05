@@ -1,4 +1,4 @@
-module Src.Data.KnotComplex where
+module Data.KnotComplex where
 
 import Prelude
 import Data.Ratio hiding (numerator,denominator)

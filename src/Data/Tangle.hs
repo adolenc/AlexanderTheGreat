@@ -1,8 +1,8 @@
-module Src.Data.Tangle where
+module Data.Tangle where
 
 import Prelude
-import Src.Control.Monad.VectorSpace
-import Src.Data.KnotComplex
+import Control.Monad.VectorSpace
+import Data.KnotComplex
 import Data.Ratio hiding (numerator,denominator)
 
 hr2 = K 0 (1%2)

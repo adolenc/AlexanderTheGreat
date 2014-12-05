@@ -1,6 +1,6 @@
 module Main where
 
-import Src.Alexander
+import Alexander
 
 example :: Tangle
 example (a,b) = do
@@ -20,3 +20,5 @@ example (a,b) = do
   cup (u,v)
   cup (w,x)
   return (m,z)
+
+main = print $ untangle example

@@ -1,13 +1,13 @@
-module Src.Alexander
+module Alexander
 (
-  module Src.Data.Tangle
+  module Data.Tangle
 , untangle
 )
 where
 
-import Src.Data.Tangle
-import Src.Data.KnotComplex
-import Src.Control.Monad.VectorSpace
+import Data.Tangle
+import Data.KnotComplex
+import Control.Monad.VectorSpace
 
 value :: Tangle -> Rational
 value p =
