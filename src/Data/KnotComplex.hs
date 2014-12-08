@@ -1,4 +1,8 @@
-module Data.KnotComplex where
+module Data.KnotComplex 
+( 
+  Complex (..)
+, K (..)
+) where
 
 import Prelude
 import Data.Ratio hiding (numerator,denominator)
