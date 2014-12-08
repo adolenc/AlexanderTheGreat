@@ -3,7 +3,8 @@ module Data.KnotComplex where
 import Prelude
 import Data.Ratio hiding (numerator,denominator)
 
-data K = K { re2::Rational, im2::Rational } deriving (Eq,Show)
+
+data Complex a = (:+) { realPart :: a, imagPart :: a } deriving (Eq,Show)
 
 instance Num a => Num (Complex a) where
   (a :+ b) + (a' :+ b') = (a+a') :+ (b+b')
@@ -16,7 +17,9 @@ instance Num a => Num (Complex a) where
 instance Fractional a => Fractional (Complex a) where
   recip (a :+ b) = let r = recip (a*a+b*b) in ((a*r) :+ (-b*r))
   fromRational q = fromRational q :+ 0
-  
+
+
+data K = K { re2::Rational, im2::Rational } deriving (Eq,Show)
 
 instance Num K where
   K a b + K a' b' = K (a+a') (b+b')
@@ -29,5 +32,3 @@ instance Num K where
 instance Fractional K where
   recip (K a b) = let r = recip (a*a-2*b) in K (r*a) (-r*b)
   fromRational x = K x 0
-
-data Complex a = (:+) { realPart :: a, imagPart :: a } deriving (Eq,Show)
