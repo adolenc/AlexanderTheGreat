@@ -1,13 +1,14 @@
 {-# LANGUAGE MultiParamTypeClasses,FlexibleInstances,FunctionalDependencies,GeneralizedNewtypeDeriving,NoMonomorphismRestriction #-}
 
 
-import Diagrams.Prelude (Diagram, R2, (#), p2, lc, red, blue, orange, cubicSpline, atop, lwL)
+import Diagrams.Prelude (Diagram, R2, (#), p2, lc, red, blue, orange, cubicSpline, atop, lwL, (<>), circle, position, fc, lw)
 import Diagrams.Backend.SVG.CmdLine (mainWith, B)
 
-type Point = (Double, Double)
+data Z = Over | Under | Normal deriving (Eq)
+type Point = (Double, Double, Z)
 
 (.+) :: Point -> Point -> Point
-(x1, y1) .+ (x2, y2) = (x1 + x2, y1 + y2)
+(x1, y1, z1) .+ (x2, y2, _) = (x1 + x2, y1 + y2, z1)
 
 type Line = [Point]
 type Knot = (Line, Line)
@@ -27,14 +28,17 @@ rotate South = East
 antirotate :: Orientation -> Orientation
 antirotate dir = iterate rotate dir !! 3
 
+twist' :: Z -> KnotWithEdges -> Orientation -> KnotWithEdges 
+twist' z (knot, (nw, ne, se, sw)) North = (twistKnot knot z nw ne North, (ne, nw, se, sw))
+twist' z (knot, (nw, ne, se, sw)) East  = (twistKnot knot z ne se East,  (nw, se, ne, sw))
+twist' z (knot, (nw, ne, se, sw)) South = (twistKnot knot z se sw South, (nw, ne, sw, se))
+twist' z (knot, (nw, ne, se, sw)) West  = (twistKnot knot z sw nw West,  (sw, ne, se, nw))
+
 twist :: KnotWithEdges -> Orientation -> KnotWithEdges
-twist (knot, (nw, ne, se, sw)) North = (twistKnot knot nw ne North, (ne, nw, se, sw))
-twist (knot, (nw, ne, se, sw)) East  = (twistKnot knot ne se East,  (nw, se, ne, sw))
-twist (knot, (nw, ne, se, sw)) South = (twistKnot knot se sw South, (nw, ne, sw, se))
-twist (knot, (nw, ne, se, sw)) West  = (twistKnot knot sw nw West,  (sw, ne, se, nw))
+twist = twist' Under
 
 antitwist :: KnotWithEdges -> Orientation -> KnotWithEdges
-antitwist = twist
+antitwist = twist' Over
 
 interpretPosition :: LinePosition -> Knot -> Point
 interpretPosition FirstA (aline, _) = head aline
@@ -48,32 +52,45 @@ addPoint LastA  (aline, bline) p = (aline ++ [p], bline)
 addPoint FirstB (aline, bline) p = (aline,        p : bline)
 addPoint LastB  (aline, bline) p = (aline,        bline ++ [p])
 
-create :: Orientation -> Point -> Point -> [Point]
-create North p1 p2 = map (.+ ( 0,  1)) [p1, p2]
-create South p1 p2 = map (.+ ( 0, -1)) [p1, p2]
-create West  p1 p2 = map (.+ (-1,  0)) [p1, p2]
-create East  p1 p2 = map (.+ ( 1,  0)) [p1, p2]
+halfWay :: Orientation -> Z -> Point -> Point -> Point
+halfWay North z (x1, y1, _) (x2, y2, _) = ((x1 + x2) / 2, y1 + 0.5, z)
+halfWay South z (x1, y1, _) (x2, y2, _) = ((x1 + x2) / 2, y1 - 0.5, z)
+halfWay West  z (x1, y1, _) (x2, y2, _) = (x1 - 0.5, (y1 + y2) / 2, z)
+halfWay East  z (x1, y1, _) (x2, y2, _) = (x1 + 0.5, (y1 + y2) / 2, z)
 
-twistKnot :: Knot -> LinePosition -> LinePosition -> Orientation -> Knot
-twistKnot knot pos1 pos2 dir = let newPoints = create dir (interpretPosition pos1 knot)
-                                                          (interpretPosition pos2 knot)
-                                in foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                            [(pos2, head newPoints),
-                                             (pos1, last newPoints)]
+shift :: Z -> Z
+shift Normal = Normal
+shift Over = Under
+shift Under = Over
+
+create :: Orientation -> Z -> Point -> Point -> [Point]
+create North z p1 p2 = (take 2 $ repeat $ halfWay North z p1 p2) ++ (map (.+ ( 0,  1, z)) [p1, p2])
+create South z p1 p2 = (take 2 $ repeat $ halfWay South z p1 p2) ++ (map (.+ ( 0, -1, z)) [p1, p2])
+create West  z p1 p2 = (take 2 $ repeat $ halfWay West  z p1 p2) ++ (map (.+ (-1,  0, z)) [p1, p2])
+create East  z p1 p2 = (take 2 $ repeat $ halfWay East  z p1 p2) ++ (map (.+ ( 1,  0, z)) [p1, p2])
+
+twistKnot :: Knot -> Z -> LinePosition -> LinePosition -> Orientation -> Knot
+twistKnot knot z pos1 pos2 dir = let newPoints = create dir z (interpretPosition pos1 knot)
+                                                              (interpretPosition pos2 knot)
+                                  in foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
+                                              [(pos1, head newPoints),
+                                               (pos2, head $ tail newPoints),
+                                               (pos2, head $ tail $ tail newPoints),
+                                               (pos1, last newPoints)]
 
 expandKnot :: KnotWithEdges -> KnotWithEdges
 expandKnot (knot, (ne, nw, sw, se)) = (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                            [(ne, (interpretPosition ne knot) .+ (-1,  0.5)),
-                                             (nw, (interpretPosition nw knot) .+ ( 1,  0.5)),
-                                             (sw, (interpretPosition sw knot) .+ ( 1, -0.5)),
-                                             (se, (interpretPosition se knot) .+ (-1, -0.5))], (ne, nw, sw, se))
+                                            [(ne, (interpretPosition ne knot) .+ (-1,  0.5, Normal)),
+                                             (nw, (interpretPosition nw knot) .+ ( 1,  0.5, Normal)),
+                                             (sw, (interpretPosition sw knot) .+ ( 1, -0.5, Normal)),
+                                             (se, (interpretPosition se knot) .+ (-1, -0.5, Normal))], (ne, nw, sw, se))
 
 zeroKnot, emptyknot :: KnotWithEdges
-zeroKnot = (([(0, 1), (1, 1)],
-             [(0, 0), (1, 0)]),
+zeroKnot = (([(0, 1, Normal), (1, 1, Normal)],
+             [(0, 0, Normal), (1, 0, Normal)]),
             (FirstA, LastA, LastB, FirstB))
-emptyknot = (([(0, 1)],
-              [(0, 0)]),
+emptyknot = (([(0, 1, Normal)],
+              [(0, 0, Normal)]),
              (FirstA, LastA, LastB, FirstB))
 
 generateKnot' :: [String] -> (KnotWithEdges, Orientation)
@@ -93,10 +110,19 @@ generateKnot' (i:is)
 generateKnot :: [String] -> Knot
 generateKnot steps = fst $ expandKnot $ fst $ generateKnot' $ reverse steps
 
-sampleKnot = generateKnot ["antitwist", "twist", "rotate", "twist", "antitwist", "rotate", "antitwist", "rotate", "rotate", "twist", "twist"]
+sampleKnot = generateKnot ["twist", "twist", "twist", "antitwist", "rotate", "twist"]
 
-alineDia = cubicSpline False (map p2 $ fst sampleKnot) # lc blue # lwL 0.05
-blineDia = cubicSpline False (map p2 $ snd sampleKnot) # lc red # lwL 0.05
-clineDia = cubicSpline False (map p2 $ take 5 $ snd sampleKnot) # lc orange # lwL 0.05
+pointTo2D :: Point -> (Double, Double)
+pointTo2D (x, y, z) = (x, y)
 
-main = mainWith (alineDia `atop` blineDia :: Diagram B R2)
+alineDia = cubicSpline False (map p2 $ map pointTo2D $ fst sampleKnot) # lc blue # lwL 0.05
+blineDia = cubicSpline False (map p2 $ map pointTo2D $ snd sampleKnot) # lc red # lwL 0.05
+-- overs = map p2 $ map pointTo2D $ filter (\(_,_,z) -> z == Over) $ (fst sampleKnot ++ snd sampleKnot)
+-- unders = map p2 $ map pointTo2D $ filter (\(_,_,z) -> z == Under) $ (fst sampleKnot ++ snd sampleKnot)
+-- dotBlue = circle 0.03 # fc blue
+-- dotRed = circle 0.03 # fc red
+tangles = alineDia `atop` blineDia
+
+
+main = mainWith ( -- position (zip unders (repeat dotRed)) `atop` position (zip overs (repeat dotBlue)) `atop`
+                 tangles :: Diagram B R2)
