@@ -31,10 +31,10 @@ antirotate :: Orientation -> Orientation
 antirotate dir = iterate rotate dir !! 3
 
 twist' :: Z -> KnotWithEdges -> Orientation -> KnotWithEdges 
-twist' z (knot, (nw, ne, se, sw)) North = (twistKnot knot z nw ne North, (ne, nw, se, sw))
-twist' z (knot, (nw, ne, se, sw)) East  = (twistKnot knot z ne se East,  (nw, se, ne, sw))
-twist' z (knot, (nw, ne, se, sw)) South = (twistKnot knot z se sw South, (nw, ne, sw, se))
-twist' z (knot, (nw, ne, se, sw)) West  = (twistKnot knot z sw nw West,  (sw, ne, se, nw))
+twist' z (knot, edges@(nw, ne, se, sw)) North = (twistKnot knot z nw ne North, edges)
+twist' z (knot, edges@(nw, ne, se, sw)) East  = (twistKnot knot z ne se East,  edges)
+twist' z (knot, edges@(nw, ne, se, sw)) South = (twistKnot knot z se sw South, edges)
+twist' z (knot, edges@(nw, ne, se, sw)) West  = (twistKnot knot z sw nw West,  edges)
 
 twist :: KnotWithEdges -> Orientation -> KnotWithEdges
 twist = twist' Under
@@ -66,10 +66,10 @@ shift Over = Under
 shift Under = Over
 
 create :: Orientation -> Z -> Point -> Point -> [Point]
-create North z p1 p2 = (take 2 $ repeat $ halfWay North z p1 p2) ++ (map (.+ ( 0,  1, z)) [p1, p2])
-create South z p1 p2 = (take 2 $ repeat $ halfWay South z p1 p2) ++ (map (.+ ( 0, -1, z)) [p1, p2])
-create West  z p1 p2 = (take 2 $ repeat $ halfWay West  z p1 p2) ++ (map (.+ (-1,  0, z)) [p1, p2])
-create East  z p1 p2 = (take 2 $ repeat $ halfWay East  z p1 p2) ++ (map (.+ ( 1,  0, z)) [p1, p2])
+create North z p1 p2 = [halfWay North z p1 p2, halfWay North (shift z) p1 p2] ++ (map (.+ ( 0,  1, z)) [p1, p2])
+create South z p1 p2 = [halfWay South z p1 p2, halfWay South (shift z) p1 p2] ++ (map (.+ ( 0, -1, z)) [p1, p2])
+create West  z p1 p2 = [halfWay West  z p1 p2, halfWay West  (shift z) p1 p2] ++ (map (.+ (-1,  0, z)) [p1, p2])
+create East  z p1 p2 = [halfWay East  z p1 p2, halfWay East  (shift z) p1 p2] ++ (map (.+ ( 1,  0, z)) [p1, p2])
 
 twistKnot :: Knot -> Z -> LinePosition -> LinePosition -> Orientation -> Knot
 twistKnot knot z pos1 pos2 dir = let newPoints = create dir z (interpretPosition pos1 knot)
@@ -81,11 +81,12 @@ twistKnot knot z pos1 pos2 dir = let newPoints = create dir z (interpretPosition
                                                (pos1, last newPoints)]
 
 expandKnot :: KnotWithEdges -> KnotWithEdges
-expandKnot (knot, (ne, nw, sw, se)) = (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                            [(ne, (interpretPosition ne knot) .+ (-1,  0.5, Normal)),
-                                             (nw, (interpretPosition nw knot) .+ ( 1,  0.5, Normal)),
-                                             (sw, (interpretPosition sw knot) .+ ( 1, -0.5, Normal)),
-                                             (se, (interpretPosition se knot) .+ (-1, -0.5, Normal))], (ne, nw, sw, se))
+expandKnot (knot, edges@(ne, nw, sw, se)) = (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
+                                                   [(ne, (interpretPosition ne knot) .+ (-1,  0.5, Normal)),
+                                                    (nw, (interpretPosition nw knot) .+ ( 1,  0.5, Normal)),
+                                                    (sw, (interpretPosition sw knot) .+ ( 1, -0.5, Normal)),
+                                                    (se, (interpretPosition se knot) .+ (-1, -0.5, Normal))],
+                                            edges)
 
 zeroKnot, emptyknot :: KnotWithEdges
 zeroKnot = (([(0, 1, Normal), (1, 1, Normal)],
@@ -104,7 +105,6 @@ generateKnot' (i:is)
     | i == Antitwist  = (antitwist currentKnot orientation, orientation)
     | i == Rotate     = (currentKnot,     rotate orientation)
     | i == Antirotate = (currentKnot, antirotate orientation)
-    | otherwise = error "aaa doushio ~~ このステップ分からない..."
     where remainingKnot = generateKnot' is
           currentKnot = fst remainingKnot
           orientation = snd remainingKnot
