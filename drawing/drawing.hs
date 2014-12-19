@@ -4,6 +4,8 @@
 import Diagrams.Prelude (Diagram, R2, (#), p2, lc, red, blue, orange, cubicSpline, atop, lwL, (<>), circle, position, fc, lw)
 import Diagrams.Backend.SVG.CmdLine (mainWith, B)
 
+data KnotMove = Twist | Antitwist | Rotate | Antirotate deriving (Eq)
+
 data Z = Over | Under | Normal deriving (Eq)
 type Point = (Double, Double, Z)
 
@@ -93,24 +95,24 @@ emptyknot = (([(0, 1, Normal)],
               [(0, 0, Normal)]),
              (FirstA, LastA, LastB, FirstB))
 
-generateKnot' :: [String] -> (KnotWithEdges, Orientation)
+generateKnot' :: [KnotMove] -> (KnotWithEdges, Orientation)
 generateKnot' [] = (zeroKnot, East)
-generateKnot' ["twist"]     = (twist emptyknot East, East)
-generateKnot' ["antitwist"] = (antitwist emptyknot East, East)
+generateKnot' [Twist]     = (twist emptyknot East, East)
+generateKnot' [Antitwist] = (antitwist emptyknot East, East)
 generateKnot' (i:is) 
-    | i == "twist"      = (twist     currentKnot orientation, orientation)
-    | i == "antitwist"  = (antitwist currentKnot orientation, orientation)
-    | i == "rotate"     = (currentKnot,     rotate orientation)
-    | i == "antirotate" = (currentKnot, antirotate orientation)
+    | i == Twist      = (twist     currentKnot orientation, orientation)
+    | i == Antitwist  = (antitwist currentKnot orientation, orientation)
+    | i == Rotate     = (currentKnot,     rotate orientation)
+    | i == Antirotate = (currentKnot, antirotate orientation)
     | otherwise = error "aaa doushio ~~ このステップ分からない..."
     where remainingKnot = generateKnot' is
           currentKnot = fst remainingKnot
           orientation = snd remainingKnot
 
-generateKnot :: [String] -> Knot
+generateKnot :: [KnotMove] -> Knot
 generateKnot steps = fst $ expandKnot $ fst $ generateKnot' $ reverse steps
 
-sampleKnot = generateKnot ["twist", "twist", "twist", "antitwist", "rotate", "twist"]
+sampleKnot = generateKnot [Antitwist, Twist, Rotate, Twist, Antitwist, Rotate, Antitwist, Rotate, Rotate, Twist, Twist]
 
 pointTo2D :: Point -> (Double, Double)
 pointTo2D (x, y, z) = (x, y)
