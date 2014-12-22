@@ -3,11 +3,10 @@
 
 import Diagrams.Prelude (Diagram, R2, (#), p2, lc, red, blue, orange, cubicSpline, atop, lwL, (<>), circle, position, fc, lw, centerXY, explodeTrail, at, origin, fromSegments, mconcat, reverseTrail, white, bg, black)
 import Diagrams.Backend.SVG.CmdLine (mainWith, B)
-import Data.Random.Extras
 
 data KnotMove = Twist | Antitwist | Rotate | Antirotate deriving (Eq)
 
-data Z = Over | Under | Normal deriving (Eq, Show)
+data Z = Over | Under | Normal deriving (Eq)
 type Point = (Double, Double, Z)
 
 (.+) :: Point -> Point -> Point
@@ -32,10 +31,10 @@ antirotate :: Orientation -> Orientation
 antirotate dir = iterate rotate dir !! 3
 
 twist' :: Z -> KnotWithEdges -> Orientation -> KnotWithEdges 
-twist' z (knot, edges@(nw, ne, se, sw)) North = (twistKnot knot z nw ne North, (ne, nw, se, sw))
-twist' z (knot, edges@(nw, ne, se, sw)) East  = (twistKnot knot z ne se East,  (nw, se, ne, sw))
-twist' z (knot, edges@(nw, ne, se, sw)) South = (twistKnot knot z se sw South, (nw, ne, sw, se))
-twist' z (knot, edges@(nw, ne, se, sw)) West  = (twistKnot knot z sw nw West,  (sw, ne, se, nw))
+twist' z (knot, (nw, ne, se, sw)) North = (twistKnot knot z nw ne North, (ne, nw, se, sw))
+twist' z (knot, (nw, ne, se, sw)) East  = (twistKnot knot z ne se East,  (nw, se, ne, sw))
+twist' z (knot, (nw, ne, se, sw)) South = (twistKnot knot z se sw South, (nw, ne, sw, se))
+twist' z (knot, (nw, ne, se, sw)) West  = (twistKnot knot z sw nw West,  (sw, ne, se, nw))
 
 twist :: KnotWithEdges -> Orientation -> KnotWithEdges
 twist = twist' Over
@@ -76,10 +75,10 @@ twistKnot :: Knot -> Z -> LinePosition -> LinePosition -> Orientation -> Knot
 twistKnot knot z pos1 pos2 dir = let newPoints = create dir z (interpretPosition pos1 knot)
                                                               (interpretPosition pos2 knot)
                                   in foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                              [(pos2, head newPoints),
-                                               (pos1, head $ tail newPoints),
-                                               (pos2, head $ tail $ tail newPoints),
-                                               (pos1, last newPoints)]
+                                           [(pos2, head newPoints),
+                                            (pos1, head $ tail newPoints),
+                                            (pos2, head $ tail $ tail newPoints),
+                                            (pos1, last newPoints)]
 
 expandKnot :: KnotWithEdges -> KnotWithEdges
 expandKnot (knot, edges@(ne, nw, sw, se)) = (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
@@ -99,16 +98,15 @@ emptyknot = (([(0, 1, Normal)],
 
 generateKnot' :: [KnotMove] -> (KnotWithEdges, Orientation)
 generateKnot' [] = (zeroKnot, East)
-generateKnot' [Twist]     = (twist emptyknot East, East)
+generateKnot' [Twist] = (twist emptyknot East, East)
 generateKnot' [Antitwist] = (antitwist emptyknot East, East)
-generateKnot' (i:is) 
-    | i == Twist      = (twist     currentKnot orientation, orientation)
-    | i == Antitwist  = (antitwist currentKnot orientation, orientation)
-    | i == Rotate     = (currentKnot,     rotate orientation)
-    | i == Antirotate = (currentKnot, antirotate orientation)
-    where remainingKnot = generateKnot' is
-          currentKnot = fst remainingKnot
-          orientation = snd remainingKnot
+generateKnot' (i:is)  = case i of Twist      -> (twist currentKnot orientation, orientation)
+                                  Antitwist  -> (antitwist currentKnot orientation, orientation)
+                                  Rotate     -> (currentKnot, rotate orientation)
+                                  Antirotate -> (currentKnot, antirotate orientation)
+                                  where remainingKnot = generateKnot' is
+                                        currentKnot = fst remainingKnot
+                                        orientation = snd remainingKnot
 
 generateKnot :: [KnotMove] -> Knot
 generateKnot steps = fst $ expandKnot $ fst $ generateKnot' $ reverse steps
@@ -118,25 +116,24 @@ sampleKnot = generateKnot [Twist, Rotate, Antitwist, Rotate, Antitwist, Rotate, 
 pointTo2D :: Point -> (Double, Double)
 pointTo2D (x, y, z) = (x, y)
 
-takeOvers _ []  = []
-takeOvers ((_, _, Over):ps) (l:ls) = l : takeOvers ps ls
-takeOvers (_:ps) (_:ls) = takeOvers ps ls
+findOvers _ []  = []
+findOvers ((_, _, Over):ps) (l:ls) = l : findOvers ps ls
+findOvers (_:ps) (_:ls) = findOvers ps ls
 
-splinesOver which f = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)) # takeOvers (f $ which sampleKnot) #  mconcat
+splinesOver which f = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)) # findOvers (f $ which sampleKnot) # mconcat
 
 lineStyle color = lc color # lwL 0.05
 
 lineWhole which = cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)
 blineDiaOverA = splinesOver fst id # lineStyle red
 blineDiaOverB = splinesOver fst tail # lineStyle red
-blineDiaWhole = lineWhole fst # lineStyle red
-alineDiaWhole = lineWhole snd # lineStyle black
 alineDiaOverA = splinesOver snd id # lineStyle black
 alineDiaOverB = splinesOver snd tail # lineStyle black
+blineDiaWhole = lineWhole fst # lineStyle red
+alineDiaWhole = lineWhole snd # lineStyle black
 
 overs = map p2 $ map pointTo2D $ filter (\(_,_,z) -> z == Over) $ (fst sampleKnot ++ snd sampleKnot)
-dotRed = circle 0.2 # fc white # lwL 0
-circlesDia = position $ zip overs $ repeat dotRed
+circlesDia = position $ zip overs $ repeat $ circle 0.2 # fc white # lc white # lwL 0
 
 tangles = alineDiaOverA `atop` alineDiaOverB `atop`
           blineDiaOverA `atop` blineDiaOverB `atop`
