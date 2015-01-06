@@ -9,7 +9,7 @@
 -- - ...?
 
 
-import Diagrams.Prelude (Diagram, R2, (#), p2, lc, red, blue, orange, cubicSpline, atop, lwL, (<>), circle, position, fc, lw, centerXY, explodeTrail, at, origin, fromSegments, mconcat, reverseTrail, white, bg, black, rotate, ellipseXY, rad, (@@))
+import Diagrams.Prelude hiding (Point, Line, rotate, shift, distance)
 import Diagrams.Backend.SVG.CmdLine (mainWith, B)
 
 data KnotMove = Twist | Antitwist | Rotate | Antirotate deriving (Eq)
@@ -144,10 +144,10 @@ oversData []  = []
 oversData (p1@(x1, y1, Under):p2@(x2, y2, _):ps) = ((x1, y1), (atan2 (y2 - y1) (x2 - x1)), distance p1 p2) : oversData ps
 oversData (_:ps) = oversData ps
 
-lengths = map (\(_, _, d) -> max (d / 25.0) 0.3) $ oversData $ (fst sampleKnot ++ snd sampleKnot)
+lengths' = map (\(_, _, d) -> max (d / 25.0) 0.3) $ oversData $ (fst sampleKnot ++ snd sampleKnot)
 
 splinesOver which f = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)) # takeOvers (f $ which sampleKnot) #  mconcat
-splinesOver' which f = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)) # takeOvers (f $ which sampleKnot) # zipWith lwL lengths #  mconcat
+splinesOver' which f = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)) # takeOvers (f $ which sampleKnot) # zipWith lwL lengths' #  mconcat
 
 lineStyle color = lc color # lwL 0.05
 
