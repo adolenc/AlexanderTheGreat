@@ -29,14 +29,14 @@ type EdgePoints = (LinePosition, LinePosition, LinePosition, LinePosition)
 
 type KnotWithEdges = (Knot, EdgePoints)
 
-rotate' :: Orientation -> Orientation
-rotate' East  = North
-rotate' North = West
-rotate' West  = South
-rotate' South = East
+rotate :: Orientation -> Orientation
+rotate East  = North
+rotate North = West
+rotate West  = South
+rotate South = East
 
 antirotate :: Orientation -> Orientation
-antirotate dir = iterate rotate' dir !! 3
+antirotate dir = iterate rotate dir !! 3
 
 twist' :: Z -> KnotWithEdges -> Orientation -> KnotWithEdges 
 twist' z (knot, (nw, ne, se, sw)) North = (twistKnot knot z nw ne North, (ne, nw, se, sw))
@@ -116,7 +116,7 @@ generateKnot' [Twist] = (twist emptyknot East, East)
 generateKnot' [Antitwist] = (antitwist emptyknot East, East)
 generateKnot' (i:is)  = case i of Twist      -> (twist currentKnot orientation, orientation)
                                   Antitwist  -> (antitwist currentKnot orientation, orientation)
-                                  Rotate     -> (currentKnot, rotate' orientation)
+                                  Rotate     -> (currentKnot, rotate orientation)
                                   Antirotate -> (currentKnot, antirotate orientation)
                                   where remainingKnot = generateKnot' is
                                         currentKnot = fst remainingKnot
