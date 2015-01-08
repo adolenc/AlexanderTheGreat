@@ -124,8 +124,15 @@ generateKnot' (i:is)  = case i of Twist      -> (twist currentKnot orientation, 
                                         currentKnot = fst remainingKnot
                                         orientation = snd remainingKnot
 
+reverseSteps :: [KnotMove] -> [KnotMove]
+reverseSteps = map (\s -> case s of 
+                               Twist -> Antitwist
+                               Antitwist -> Twist
+                               Rotate -> Antirotate
+                               Antirotate -> Rotate) . reverse
+
 generateKnot :: [KnotMove] -> Knot
-generateKnot steps = fst $ fst $ generateKnot' $ reverse steps
+generateKnot steps = fst $ fst $ generateKnot' $ reverseSteps steps
 
 pointTo2D :: Point -> (Double, Double)
 pointTo2D (x, y, z) = (x, y)
