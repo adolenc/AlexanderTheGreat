@@ -1,7 +1,7 @@
 module Alexander
 (
   module Data.Tangle
-, KnotMove
+, KnotMove(..)
 , untangle
 )
 where

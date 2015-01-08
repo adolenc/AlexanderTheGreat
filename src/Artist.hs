@@ -4,13 +4,15 @@
 -- - it's tangle not knot
 -- - tangle should be datatype with {lineA, lineB}
 -- - is west left or right?
--- - should just export one function for drawing
--- - merge to master
--- - ...?
 
+module Artist
+(
+  KnotMove(..)
+, renderTangle
+) where
 
 import Diagrams.Prelude hiding (Point, Line, rotate, shift, distance)
-import Diagrams.Backend.SVG.CmdLine (mainWith, B)
+import Diagrams.Backend.SVG
 
 data KnotMove = Twist | Antitwist | Rotate | Antirotate deriving (Eq)
 
@@ -125,16 +127,8 @@ generateKnot' (i:is)  = case i of Twist      -> (twist currentKnot orientation, 
 generateKnot :: [KnotMove] -> Knot
 generateKnot steps = fst $ fst $ generateKnot' $ reverse steps
 
-sampleKnot = generateKnot [Twist, Rotate, Antitwist, Rotate, Antitwist, Rotate, Antitwist, Rotate, Twist]
--- sampleKnot = generateKnot [Twist, Twist]
--- sampleKnot = generateKnot $ take 50 $ cycle [Twist, Rotate, Twist]
-
 pointTo2D :: Point -> (Double, Double)
 pointTo2D (x, y, z) = (x, y)
-
-findOvers _ []  = []
-findOvers ((_, _, Over):ps) (l:ls) = l : findOvers ps ls
-findOvers (_:ps) (_:ls) = findOvers ps ls
 
 takeOvers _ []  = []
 takeOvers ((_, _, Over):ps) (l:ls) = l : takeOvers ps ls
@@ -144,31 +138,33 @@ oversData []  = []
 oversData (p1@(x1, y1, Under):p2@(x2, y2, _):ps) = ((x1, y1), (atan2 (y2 - y1) (x2 - x1)), distance p1 p2) : oversData ps
 oversData (_:ps) = oversData ps
 
-lengths' = map (\(_, _, d) -> max (d / 25.0) 0.3) $ oversData $ (fst sampleKnot ++ snd sampleKnot)
-
-splinesOver which f = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)) # takeOvers (f $ which sampleKnot) #  mconcat
-splinesOver' which f = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)) # takeOvers (f $ which sampleKnot) # zipWith lwL lengths' #  mconcat
+lengths' tangle = map (\(_, _, d) -> max (d / 25.0) 0.3) $ oversData $ (fst tangle ++ snd tangle)
+splinesOver which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) #  mconcat
+splinesOver' which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) # zipWith lwL (lengths' tangle) #  mconcat
 
 lineStyle color = lc color # lwL 0.05
 
-lineWhole which = cubicSpline False (map p2 $ map pointTo2D $ which sampleKnot)
-blineDiaOverA = splinesOver fst id   # lineStyle red
-blineDiaOverB = splinesOver fst tail # lineStyle red
-alineDiaOverA = splinesOver snd id   # lineStyle black
-alineDiaOverB = splinesOver snd tail # lineStyle black
-blineDiaWhole = lineWhole fst # lineStyle red
-alineDiaWhole = lineWhole snd # lineStyle black
+renderTangle :: [KnotMove] -> String -> IO ()
+renderTangle moves filename =
+  let
+    tangle = generateKnot moves
+    lineWhole which tangle = cubicSpline False (map p2 $ map pointTo2D $ which tangle)
+    blineDiaOverA = splinesOver fst id   tangle # lineStyle red
+    blineDiaOverB = splinesOver fst tail tangle # lineStyle red
+    alineDiaOverA = splinesOver snd id   tangle # lineStyle black
+    alineDiaOverB = splinesOver snd tail tangle # lineStyle black
+    blineDiaWhole = lineWhole fst tangle # lineStyle red
+    alineDiaWhole = lineWhole snd tangle # lineStyle black
 
-alineDiaOverAWhite = splinesOver' snd id   # lineStyle white
-alineDiaOverBWhite = splinesOver' snd tail # lineStyle white
-blineDiaOverAWhite = splinesOver' fst id   # lineStyle white
-blineDiaOverBWhite = splinesOver' fst tail # lineStyle white
+    alineDiaOverAWhite = splinesOver' snd id   tangle # lineStyle white
+    alineDiaOverBWhite = splinesOver' snd tail tangle # lineStyle white
+    blineDiaOverAWhite = splinesOver' fst id   tangle # lineStyle white
+    blineDiaOverBWhite = splinesOver' fst tail tangle # lineStyle white
 
-tangles = alineDiaOverA `atop` alineDiaOverB `atop`
-          blineDiaOverA `atop` blineDiaOverB `atop`
-          alineDiaOverAWhite `atop` alineDiaOverBWhite `atop`
-          blineDiaOverAWhite `atop` blineDiaOverBWhite `atop`
-          alineDiaWhole `atop` blineDiaWhole
-
-
-main = mainWith (tangles # bg white :: Diagram B R2)
+    diagram = alineDiaOverA `atop` alineDiaOverB `atop`
+              blineDiaOverA `atop` blineDiaOverB `atop`
+              alineDiaOverAWhite `atop` alineDiaOverBWhite `atop`
+              blineDiaOverAWhite `atop` blineDiaOverBWhite `atop`
+              alineDiaWhole `atop` blineDiaWhole
+  in
+    renderSVG filename (mkSizeSpec (Just 400.0) (Just 400.0)) (diagram # bg white)
