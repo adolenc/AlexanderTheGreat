@@ -105,32 +105,35 @@ create East  z by p1 p2 = [halfWay East  z by p1 p2, halfWay East  (shift z) by 
 -- | Applies twist operation by expanding the tangle with four new points.
 twistTangle :: Tangle -> Z -> LinePosition -> LinePosition -> Orientation -> Tangle
 twistTangle knot z pos1 pos2 dir = let p1 = (interpretPosition pos1 knot)
-                                     p2 = (interpretPosition pos2 knot)
-                                     newPoints = create dir z (sqrt (distance p1 p2))
-                                                              p1
-                                                              p2
-                                  in foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                           [(pos2, head newPoints),
-                                            (pos1, head $ tail newPoints),
-                                            (pos2, head $ tail $ tail newPoints),
-                                            (pos1, last newPoints)]
+                                       p2 = (interpretPosition pos2 knot)
+                                       newPoints = create dir z (sqrt (distance p1 p2))
+                                                                p1
+                                                                p2
+                                    in foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
+                                             [(pos2, head newPoints),
+                                              (pos1, head $ tail newPoints),
+                                              (pos2, head $ tail $ tail newPoints),
+                                              (pos1, last newPoints)]
 
 -- | Expands the final tangle with four new points that extend the string ends away from tangles. This adds a nice touch to the final drawing. 
 expandTangle :: TangleWithEdges -> TangleWithEdges
-expandTangle (knot, edges@(ne, nw, sw, se)) = (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                                   [(ne, (interpretPosition ne knot) .+ (-2,  1.0, Normal)),
-                                                    (nw, (interpretPosition nw knot) .+ ( 2,  1.0, Normal)),
-                                                    (sw, (interpretPosition sw knot) .+ ( 2, -1.0, Normal)),
-                                                    (se, (interpretPosition se knot) .+ (-2, -1.0, Normal))],
+expandTangle (knot, edges@(ne, nw, sw, se)) = let
+                                                byx = sqrt $ distance (interpretPosition ne knot) (interpretPosition nw knot)
+                                                byy = sqrt $ distance (interpretPosition ne knot) (interpretPosition se knot)
+                                              in
+                                                (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
+                                                       [(ne, (interpretPosition ne knot) .+ (-byx,  byy * 0.5, Normal)),
+                                                        (nw, (interpretPosition nw knot) .+ ( byx,  byy * 0.5, Normal)),
+                                                        (sw, (interpretPosition sw knot) .+ ( byx, -byy * 0.5, Normal)),
+                                                        (se, (interpretPosition se knot) .+ (-byx, -byy * 0.5, Normal))],
                                             edges)
 
+zeroTangle, emptyTangle :: TangleWithEdges
 -- | ZeroTangle is just two horizontal parallel strings.
-zeroTangle,
--- | Emptyknot is just two strings represented as dots.
-emptyTangle :: TangleWithEdges
 zeroTangle = (([(0, 1, Normal), (1, 1, Normal)],
              [(0, 0, Normal), (1, 0, Normal)]),
             (FirstA, LastA, LastB, FirstB))
+-- | emptyTangle is just two strings represented as dots.
 emptyTangle = (([(0, 1, Normal)],
               [(0, 0, Normal)]),
              (FirstA, LastA, LastB, FirstB))
@@ -138,15 +141,15 @@ emptyTangle = (([(0, 1, Normal)],
 -- | The main recursive procedure which generates two sets of control points from given sequence of moves.
 generateTangle' :: [TangleMove] -> (TangleWithEdges, Orientation)
 generateTangle' [] = (zeroTangle, East)
-generateTangle' [Twist] = (twist emptyknot East, East)
-generateTangle' [Antitwist] = (antitwist emptyknot East, East)
+generateTangle' [Twist] = (twist emptyTangle East, East)
+generateTangle' [Antitwist] = (antitwist emptyTangle East, East)
 generateTangle' (i:is)  = case i of Twist      -> (twist currentTangle orientation, orientation)
-                                  Antitwist  -> (antitwist currentTangle orientation, orientation)
-                                  Rotate     -> (currentTangle, rotate orientation)
-                                  Antirotate -> (currentTangle, antirotate orientation)
-                                  where remainingTangle = generateTangle' is
-                                        currentTangle = fst remainingTangle
-                                        orientation = snd remainingTangle
+                                    Antitwist  -> (antitwist currentTangle orientation, orientation)
+                                    Rotate     -> (currentTangle, rotate orientation)
+                                    Antirotate -> (currentTangle, antirotate orientation)
+                                    where remainingTangle = generateTangle' is
+                                          currentTangle = fst remainingTangle
+                                          orientation = snd remainingTangle
 
 -- | List of steps in input is used for untangling a knot. In order to construct a knot, the list has to be reversed and each operation in it has to be inversed.
 reverseSteps :: [TangleMove] -> [TangleMove]
