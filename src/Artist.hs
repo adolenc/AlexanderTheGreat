@@ -36,10 +36,6 @@ type TangleWithEdges = (Tangle, EdgePoints)
 distance :: Point -> Point -> Double
 distance (x1, y1, _) (x2, y2, _) = sqrt $ ((x2 - x1) ** 2) + ((y2 - y1) ** 2)
 
--- | Remove z coordinate from point representation in order to use it with diagrams library.
-pointTo2D :: Point -> (Double, Double)
-pointTo2D (x, y, z) = (x, y)
-
 -- | Returns a point representing one of the strings ends.
 interpretPosition :: LinePosition -> Tangle -> Point
 interpretPosition FirstA (aline, _) = head aline
@@ -122,10 +118,10 @@ expandTangle (knot, edges@(ne, nw, sw, se)) = let
                                                 byy = sqrt $ distance (interpretPosition ne knot) (interpretPosition se knot)
                                               in
                                                 (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                                       [(ne, (interpretPosition ne knot) .+ (-byx,  byy * 0.5, Normal)),
-                                                        (nw, (interpretPosition nw knot) .+ ( byx,  byy * 0.5, Normal)),
-                                                        (sw, (interpretPosition sw knot) .+ ( byx, -byy * 0.5, Normal)),
-                                                        (se, (interpretPosition se knot) .+ (-byx, -byy * 0.5, Normal))],
+                                                       [(ne, (interpretPosition ne knot) .+ (-byx,  byy * 0.8, Normal)),
+                                                        (nw, (interpretPosition nw knot) .+ ( byx,  byy * 0.8, Normal)),
+                                                        (sw, (interpretPosition sw knot) .+ ( byx, -byy * 0.8, Normal)),
+                                                        (se, (interpretPosition se knot) .+ (-byx, -byy * 0.8, Normal))],
                                             edges)
 
 zeroTangle, emptyTangle :: TangleWithEdges
@@ -151,7 +147,7 @@ generateTangle' (i:is)  = case i of Twist      -> (twist currentTangle orientati
                                           currentTangle = fst remainingTangle
                                           orientation = snd remainingTangle
 
--- | List of steps in input is used for untangling a knot. In order to construct a knot, the list has to be reversed and each operation in it has to be inversed.
+-- | Output from Alexander is a series of moves, required to untangle a given rational tangle. 'reverseSteps' converts this series of moves from being destructive to constructive.
 reverseSteps :: [TangleMove] -> [TangleMove]
 reverseSteps = map (\s -> case s of 
                                Twist -> Antitwist
@@ -159,32 +155,35 @@ reverseSteps = map (\s -> case s of
                                Rotate -> Antirotate
                                Antirotate -> Rotate) . reverse
 
--- | Parses the output from @generateTangle', expands the tangle and returns it
+-- | Constructs a 'Knot' from given 'KnotMove's
 generateTangle :: [TangleMove] -> Tangle
 generateTangle steps = fst $ expandTangle $ fst $ generateTangle' $ reverseSteps steps
 
-
-takeOvers _ []  = []
-takeOvers ((_, _, Over):ps) (l:ls) = l : takeOvers ps ls
-takeOvers (_:ps) (_:ls) = takeOvers ps ls
-
-oversData []  = []
-oversData (p1@(x1, y1, Under):p2@(x2, y2, _):ps) = ((x1, y1), (atan2 (y2 - y1) (x2 - x1)), distance p1 p2) : oversData ps
-oversData (_:ps) = oversData ps
-
-lengths' tangle = map (\(_, _, d) -> max (d / 25.0) 0.3) $ oversData $ (fst tangle ++ snd tangle)
-
-
-splinesOver which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) #  mconcat
-splinesOver' which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) # zipWith lwL (lengths' tangle) #  mconcat
-
-lineStyle color = lc color # lwL 0.05
-
+-- | 'renderTangle' takes a series of 'KnotMove's and a filename, into which it renders a SVG image representing the given tangle.
 renderTangle :: [TangleMove] -> String -> IO ()
 renderTangle moves filename =
   let
     tangle = generateTangle moves
+
+    pointTo2D :: Point -> (Double, Double)
+    pointTo2D (x, y, z) = (x, y)
+
+    takeOvers _ []  = []
+    takeOvers ((_, _, Over):ps) (l:ls) = l : takeOvers ps ls
+    takeOvers (_:ps) (_:ls) = takeOvers ps ls
+
+    oversData []  = []
+    oversData (p1@(x1, y1, Under):p2@(x2, y2, _):ps) = ((x1, y1), (atan2 (y2 - y1) (x2 - x1)), distance p1 p2) : oversData ps
+    oversData (_:ps) = oversData ps
+
+    lengths' tangle = map (\(_, _, d) -> max (d / 25.0) 0.3) $ oversData $ (fst tangle ++ snd tangle)
+    splinesOver which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) #  mconcat
+    splinesOver' which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) # zipWith lwL (lengths' tangle) #  mconcat
+
+    lineStyle color = lc color # lwL 0.05
+
     lineWhole which tangle = cubicSpline False (map p2 $ map pointTo2D $ which tangle)
+
     blineDiaOverA = splinesOver fst id   tangle # lineStyle red
     blineDiaOverB = splinesOver fst tail tangle # lineStyle red
     alineDiaOverA = splinesOver snd id   tangle # lineStyle black

@@ -5,6 +5,7 @@ import Control.Monad.VectorSpace
 import Data.KnotComplex
 import Data.Ratio hiding (numerator,denominator)
 
+-- | Some useful constants
 hr2 = K 0 (1%2)
 a = hr2 :+ hr2
 b = hr2 :+ (-hr2)
