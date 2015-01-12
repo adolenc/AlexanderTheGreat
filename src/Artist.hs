@@ -4,6 +4,7 @@ module Artist
 (
   TangleMove(..)
 , renderTangle
+, renderTangleReversed
 ) where
 
 import Diagrams.Prelude hiding (Point, Line, rotate, shift, distance)
@@ -157,11 +158,11 @@ reverseSteps = map (\s -> case s of
 
 -- | Constructs a 'Knot' from given 'KnotMove's
 generateTangle :: [TangleMove] -> Tangle
-generateTangle steps = fst $ expandTangle $ fst $ generateTangle' $ reverseSteps steps
+generateTangle steps = fst $ expandTangle $ fst $ generateTangle' $ steps
 
 -- | 'renderTangle' takes a series of 'KnotMove's and a filename, into which it renders a SVG image representing the given tangle.
-renderTangle :: [TangleMove] -> String -> IO ()
-renderTangle moves filename =
+renderTangle' :: [TangleMove] -> String -> IO ()
+renderTangle' moves filename =
   let
     tangle = generateTangle moves
 
@@ -203,3 +204,11 @@ renderTangle moves filename =
               alineDiaWhole `atop` blineDiaWhole
   in
     renderSVG filename (mkSizeSpec (Just 400.0) (Just 400.0)) (diagram # bg white)
+
+-- | render Tangle via a set of moves required to untangle it
+renderTangleReversed :: [TangleMove] -> String -> IO ()
+renderTangleReversed moves = renderTangle' (reverseSteps moves)
+
+-- | render Tangle in a direct way
+renderTangle :: [TangleMove] -> String -> IO ()
+renderTangle = renderTangle'
