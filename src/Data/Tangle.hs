@@ -1,3 +1,5 @@
+-- | Module which defines Tangle and procedures for describing its components.
+
 module Data.Tangle where
 
 import Prelude

@@ -12,7 +12,7 @@ module Alexander
 where
 
 import Data.Tangle
-import Data.TangleComplex
+import Data.KnotComplex
 import Control.Monad.VectorSpace
 
 -- | Data type for all possible moves we are allowed to do with strings in a tangle

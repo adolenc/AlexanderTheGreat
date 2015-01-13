@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses,FlexibleInstances,FunctionalDependencies,GeneralizedNewtypeDeriving #-}
+-- | Module defines VectorSpace monad and accopanying functions.
 
 module Control.Monad.VectorSpace where
 

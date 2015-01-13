@@ -1,5 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses,FlexibleInstances,FunctionalDependencies,GeneralizedNewtypeDeriving,NoMonomorphismRestriction #-}
 
+-- | Module for drawing rational tangles.
+
 module Artist
 (
   TangleMove(..)

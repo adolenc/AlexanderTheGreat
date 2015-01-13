@@ -1,3 +1,5 @@
+-- | Provides datatypes for complex numbers (or complex anything, really)
+
 module Data.KnotComplex 
 ( 
   Complex (..)
