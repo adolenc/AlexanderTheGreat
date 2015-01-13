@@ -179,11 +179,11 @@ renderTangle' moves filename =
     takeOvers (_:ps) (_:ls) = takeOvers ps ls
 
     oversData []  = []
-    oversData (p1@(x1, y1, Under):p2@(x2, y2, _):ps) = ((x1, y1), (atan2 (y2 - y1) (x2 - x1)), distance p1 p2) : oversData ps
-    oversData (p1@(x1, y1, Over):p2@(x2, y2, _):ps) = ((x1, y1), (atan2 (y2 - y1) (x2 - x1)), distance p1 p2) : oversData ps
+    oversData (p1@(x1, y1, Over):p2@(x2, y2, _):ps) = (distance p1 p2) : oversData ps
     oversData (_:ps) = oversData ps
 
-    lengths' tangle = map (\(_, _, d) -> max (d / 15.0) 0.3) $ oversData $ (fst tangle ++ snd tangle)
+    lengths' tangle = map (\d -> max (d / 15.0) 0.5) $ oversData $ (fst tangle ++ snd tangle)
+
     splinesOver which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) #  mconcat
     splinesOver' which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) # zipWith lwL (lengths' tangle) #  mconcat
 
