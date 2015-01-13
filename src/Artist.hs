@@ -121,10 +121,10 @@ expandTangle (knot, edges@(ne, nw, sw, se)) = let
                                                 byy = sqrt $ distance (interpretPosition ne knot) (interpretPosition se knot)
                                               in
                                                 (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                                       [(ne, (interpretPosition ne knot) .+ (-byx,  byy * 0.8, Normal)),
-                                                        (nw, (interpretPosition nw knot) .+ ( byx,  byy * 0.8, Normal)),
-                                                        (sw, (interpretPosition sw knot) .+ ( byx, -byy * 0.8, Normal)),
-                                                        (se, (interpretPosition se knot) .+ (-byx, -byy * 0.8, Normal))],
+                                                       [(ne, (interpretPosition ne knot) .+ (-byx * 0.8,  byy * 0.5, Normal)),
+                                                        (nw, (interpretPosition nw knot) .+ ( byx * 0.8,  byy * 0.5, Normal)),
+                                                        (sw, (interpretPosition sw knot) .+ ( byx * 0.8, -byy * 0.5, Normal)),
+                                                        (se, (interpretPosition se knot) .+ (-byx * 0.8, -byy * 0.5, Normal))],
                                             edges)
 
 zeroTangle, emptyTangle :: TangleWithEdges
@@ -162,7 +162,7 @@ reverseSteps = map (\s -> case s of
 generateTangle :: [TangleMove] -> (Tangle, Orientation)
 generateTangle steps = (tangle, orientation)
                        where (tangleWithEdges, orientation) = generateTangle' steps
-                             tangle = fst $ tangleWithEdges
+                             tangle = fst $ expandTangle $ tangleWithEdges
 
 
 -- | 'renderTangle' takes a series of 'KnotMove's and a filename, into which it renders a SVG image representing the given tangle.
