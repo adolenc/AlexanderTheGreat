@@ -1,42 +1,42 @@
--- | Main module of the library for converting a sensible representation of
--- rational tangles into a series of moves required to untangle it.
+{-|
+Module      : Alexander
+Description : Library that helps with untangling of the rational tangles.
+-}
+
 module Alexander
 (
   module Data.Tangle
-, KnotMove(..)
+, TangleMove(..)
 , untangle
 )
 where
 
 import Data.Tangle
-import Data.KnotComplex
+import Data.TangleComplex
 import Control.Monad.VectorSpace
 
--- | Datatype representing moves allowed in tangling/untangling
-data KnotMove = Twist | Antitwist | Rotate | Antirotate deriving (Eq, Show)
+-- | Data type for all possible moves we are allowed to do with strings in a tangle
+data TangleMove = Twist | Antitwist | Rotate | Antirotate deriving (Eq, Show)
 
--- | Converts a 'Tangle' into his representation with 'Rational' number.
+-- | Converts a tangle into its representation with a rational number.
 value :: Tangle -> Rational
 value p =
   let (a,b) = value' p
   in re2 $ realPart $ -i*a/b
 
--- | Auxilary function
+-- | Auxilary function.
 value' p =
   let alpha = coefficient (False,False) $ p (False,False)
       beta  = coefficient (True,False)  $ p (False,True)
   in (alpha,beta)
 
--- | Converts a tangle represented by a 'Rational' number into a series of
--- 'KnotMove's.
-steps :: Rational -> [KnotMove]
+-- | Based on a rational number representing a rational tangle it produces the next move to untangle it and calls itself recursively with a number representing the new tangle.
+steps :: Rational -> [TangleMove]
 steps 0 = []
 steps q | q<= -1 = Twist:steps (q+1)
         | -1<q && q<1 = Rotate:steps (-1/q)
         | q>=1 = Antitwist:steps (q-1)
 
--- | 'untangle' is the important function. It takes a tangle, which can be
--- constructed via the monad, and returns a series of 'KnotMove's required to
--- untangle it.
-untangle :: Tangle -> [KnotMove]
+-- | For a given tangle it produces the sequence of moves to untangle it.
 untangle t = steps (value t)
+

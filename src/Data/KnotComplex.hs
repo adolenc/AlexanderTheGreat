@@ -7,7 +7,7 @@ module Data.KnotComplex
 import Prelude
 import Data.Ratio hiding (numerator,denominator)
 
-
+-- | Data representing a complex number as a pair of arbitrary types. 
 data Complex a = (:+) { realPart :: a, imagPart :: a } deriving (Eq,Show)
 
 instance Num a => Num (Complex a) where
@@ -22,7 +22,7 @@ instance Fractional a => Fractional (Complex a) where
   recip (a :+ b) = let r = recip (a*a+b*b) in ((a*r) :+ (-b*r))
   fromRational q = fromRational q :+ 0
 
-
+-- | Data representing a complex number as a pair of rationals.
 data K = K { re2::Rational, im2::Rational } deriving (Eq,Show)
 
 instance Num K where

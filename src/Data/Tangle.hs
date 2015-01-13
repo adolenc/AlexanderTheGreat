@@ -11,20 +11,24 @@ a = hr2 :+ hr2
 b = hr2 :+ (-hr2)
 i = 0 :+ 1
 
-type L = Complex K
-type KnotMonad = V L
+-- | KnotMonad is represented as a vector space.
+type KnotMonad = V (Complex K)
 
+-- | Function transforming a pair of input 
 type Tangle = (Bool,Bool) -> KnotMonad (Bool,Bool)
 
+-- | A component of a tangle with two inputs and no outputs.
 cup :: (Bool,Bool) -> KnotMonad ()
 cup (u,v) = case (u,v) of
   (False,True) -> (-i * b) .* return ()
   (True,False) -> (i * a) .* return ()
   otherwise -> vzero
 
+-- | A component of a tangle with no inputs and two outputs.
 cap :: () -> KnotMonad (Bool,Bool)
 cap () = (-i * b) .* return (False,True) .+ (i * a) .* return (True,False)
 
+-- | A component of a tangle representing a twist.
 over :: Tangle
 over (u,v) = a .* do
   () <- cup (u,v)
@@ -32,14 +36,11 @@ over (u,v) = a .* do
   .+
   b .* return (u,v)
 
+-- | A component of a tangle representing an antitwist.
 under :: Tangle
 under (u,v) = b .* do
   () <- cup (u,v)
   cap ()
   .+
   a .* return (u,v)
-  
-infinity (i,j) = return (i,j)
-zero (i,j) = do
-  cup (i,j)
-  cap ()
+
