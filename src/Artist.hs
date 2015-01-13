@@ -60,14 +60,14 @@ halfWay South z by (x1, y1, _) (x2, y2, _) = ((x1 + x2) / 2, y1 - by / 2, z)
 halfWay West  z by (x1, y1, _) (x2, y2, _) = (x1 - by / 2, (y1 + y2) / 2, z)
 halfWay East  z by (x1, y1, _) (x2, y2, _) = (x1 + by / 2, (y1 + y2) / 2, z)
 
--- | Function for rotating a tangle 90 degrees anticlockwise.
+-- | Function for rotating a tangle 90 degrees.
 rotate :: Orientation -> Orientation
 rotate East  = South
 rotate North = East
 rotate West  = North
 rotate South = West
 
--- | Antirotation move is equivalent to three moves of rotation.
+-- | Antirotation move is equivalent to three rotations.
 antirotate :: Orientation -> Orientation
 antirotate = rotate . rotate . rotate
 
@@ -180,9 +180,10 @@ renderTangle' moves filename =
 
     oversData []  = []
     oversData (p1@(x1, y1, Under):p2@(x2, y2, _):ps) = ((x1, y1), (atan2 (y2 - y1) (x2 - x1)), distance p1 p2) : oversData ps
+    oversData (p1@(x1, y1, Over):p2@(x2, y2, _):ps) = ((x1, y1), (atan2 (y2 - y1) (x2 - x1)), distance p1 p2) : oversData ps
     oversData (_:ps) = oversData ps
 
-    lengths' tangle = map (\(_, _, d) -> max (d / 25.0) 0.3) $ oversData $ (fst tangle ++ snd tangle)
+    lengths' tangle = map (\(_, _, d) -> max (d / 15.0) 0.3) $ oversData $ (fst tangle ++ snd tangle)
     splinesOver which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) #  mconcat
     splinesOver' which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) # zipWith lwL (lengths' tangle) #  mconcat
 
