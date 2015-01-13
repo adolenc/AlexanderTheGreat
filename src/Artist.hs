@@ -62,10 +62,10 @@ halfWay East  z by (x1, y1, _) (x2, y2, _) = (x1 + by / 2, (y1 + y2) / 2, z)
 
 -- | Function for rotating a tangle 90 degrees anticlockwise.
 rotate :: Orientation -> Orientation
-rotate East  = North
-rotate North = West
-rotate West  = South
-rotate South = East
+rotate East  = South
+rotate North = East
+rotate West  = North
+rotate South = West
 
 -- | Antirotation move is equivalent to three moves of rotation.
 antirotate :: Orientation -> Orientation
@@ -156,20 +156,23 @@ reverseSteps = map (\s -> case s of
                                Twist -> Antitwist
                                Antitwist -> Twist
                                Rotate -> Antirotate
-                               Antirotate -> Rotate) . reverse
+                               Antirotate -> Rotate)
 
 -- | Constructs a 'Knot' from given 'KnotMove's
-generateTangle :: [TangleMove] -> Tangle
-generateTangle steps = fst $ expandTangle $ fst $ generateTangle' $ steps
+generateTangle :: [TangleMove] -> (Tangle, Orientation)
+generateTangle steps = (tangle, orientation)
+                       where (tangleWithEdges, orientation) = generateTangle' steps
+                             tangle = fst $ tangleWithEdges
+
 
 -- | 'renderTangle' takes a series of 'KnotMove's and a filename, into which it renders a SVG image representing the given tangle.
 renderTangle' :: [TangleMove] -> String -> IO ()
 renderTangle' moves filename =
   let
-    tangle = generateTangle moves
+    (tangle, orientation) = generateTangle moves
 
     pointTo2D :: Point -> (Double, Double)
-    pointTo2D (x, y, z) = (x, y)
+    pointTo2D (x, y, _) = (x, y)
 
     takeOvers _ []  = []
     takeOvers ((_, _, Over):ps) (l:ls) = l : takeOvers ps ls
@@ -199,18 +202,24 @@ renderTangle' moves filename =
     blineDiaOverAWhite = splinesOver' fst id   tangle # lineStyle white
     blineDiaOverBWhite = splinesOver' fst tail tangle # lineStyle white
 
-    diagram = alineDiaOverA `atop` alineDiaOverB `atop`
+    getRotation :: Orientation -> Double
+    getRotation South = 1/4
+    getRotation West = 2/4
+    getRotation North = 3/4
+    getRotation East = 4/4
+
+    diagram = (alineDiaOverA `atop` alineDiaOverB `atop`
               blineDiaOverA `atop` blineDiaOverB `atop`
               alineDiaOverAWhite `atop` alineDiaOverBWhite `atop`
               blineDiaOverAWhite `atop` blineDiaOverBWhite `atop`
-              alineDiaWhole `atop` blineDiaWhole
+              alineDiaWhole `atop` blineDiaWhole) # rotateBy (getRotation orientation)
   in
-    renderSVG filename (mkSizeSpec (Just 400.0) (Just 400.0)) (diagram # bg white)
+    renderSVG filename (mkSizeSpec (Just 400.0) (Just 400.0)) (diagram  # bg white)
 
 -- | render Tangle via a set of moves required to untangle it
 renderTangleReversed :: [TangleMove] -> String -> IO ()
-renderTangleReversed moves = renderTangle' (reverseSteps moves)
+renderTangleReversed = renderTangle' . reverseSteps
 
 -- | render Tangle in a direct way
 renderTangle :: [TangleMove] -> String -> IO ()
-renderTangle = renderTangle'
+renderTangle = renderTangle' . reverse
