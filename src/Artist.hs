@@ -5,6 +5,7 @@
 module Artist
 (
   TangleMove(..)
+, generateTangle
 , renderTangle
 , renderTangleReversed
 ) where
@@ -19,46 +20,40 @@ data Orientation = West | North | East | South deriving (Show)
 -- | Data type for a string end.
 data LinePosition = FirstA | LastA | FirstB | LastB deriving (Show)
 -- | Data type for Z axis consisting of only three values.
-data Z = Over | Under | Normal deriving (Eq)
+data Z = Over | Under | Normal deriving (Eq, Show)
 
 -- | Points are declared with x,y coordinate and a special z coordinate. They are used for constructing and shaping a tangle.
-type Point = (Double, Double, Z)
+type Point = (Double, Double)
+type Sections = [Z]
 -- | Represents one of the strings. Each string is defined as a spline with points used as spline control points.
 type Line = [Point]
 -- | Tangle is represented as a pair of strings.
-type Tangle = (Line, Line)
+type Tangle = (Line, Line, Sections, Sections)
 -- | Represents a tuple of both strings ends. The order tells us the current location of a string end. First position corresponds to NW direction, last one to SW position.
 type EdgePoints = (LinePosition, LinePosition, LinePosition, LinePosition)
 -- | Represents a knot and current positions of strings ends.
 type TangleWithEdges = (Tangle, EdgePoints)
 
 (.+) :: Point -> Point -> Point
-(x1, y1, z1) .+ (x2, y2, _) = (x1 + x2, y1 + y2, z1)
+(x1, y1) .+ (x2, y2) = (x1 + x2, y1 + y2)
 
 -- | Euclidian distance between two points.
 distance :: Point -> Point -> Double
-distance (x1, y1, _) (x2, y2, _) = sqrt $ ((x2 - x1) ** 2) + ((y2 - y1) ** 2)
+distance (x1, y1) (x2, y2) = sqrt $ ((x2 - x1) ** 2) + ((y2 - y1) ** 2)
 
 -- | Returns a point representing one of the strings ends.
 interpretPosition :: LinePosition -> Tangle -> Point
-interpretPosition FirstA (aline, _) = head aline
-interpretPosition LastA  (aline, _) = last aline
-interpretPosition FirstB (_, bline) = head bline
-interpretPosition LastB  (_, bline) = last bline
+interpretPosition FirstA (aline, _, _, _) = head aline
+interpretPosition LastA  (aline, _, _, _) = last aline
+interpretPosition FirstB (_, bline, _, _) = head bline
+interpretPosition LastB  (_, bline, _, _) = last bline
 
 -- | Appends a new point at the beginning or the end of one of the strings.
-addPoint :: LinePosition -> Tangle -> Point -> Tangle
-addPoint FirstA (aline, bline) p = (p : aline,    bline)
-addPoint LastA  (aline, bline) p = (aline ++ [p], bline)
-addPoint FirstB (aline, bline) p = (aline,        p : bline)
-addPoint LastB  (aline, bline) p = (aline,        bline ++ [p])
-
--- | Based on orientation returns a new point where strings overlap.
-halfWay :: Orientation -> Z -> Double -> Point -> Point -> Point
-halfWay North z by (x1, y1, _) (x2, y2, _) = ((x1 + x2) / 2, y1 + by / 2, z)
-halfWay South z by (x1, y1, _) (x2, y2, _) = ((x1 + x2) / 2, y1 - by / 2, z)
-halfWay West  z by (x1, y1, _) (x2, y2, _) = (x1 - by / 2, (y1 + y2) / 2, z)
-halfWay East  z by (x1, y1, _) (x2, y2, _) = (x1 + by / 2, (y1 + y2) / 2, z)
+addPoint :: LinePosition -> Tangle -> Z -> Point -> Tangle
+addPoint FirstA (aline, bline, asec, bsec) z p = (p : aline,    bline       , z : asec,    bsec)
+addPoint LastA  (aline, bline, asec, bsec) z p = (aline ++ [p], bline       , asec ++ [z], bsec)
+addPoint FirstB (aline, bline, asec, bsec) z p = (aline,        p : bline   , asec,        z : bsec)
+addPoint LastB  (aline, bline, asec, bsec) z p = (aline,        bline ++ [p], asec,        bsec ++ [z])
 
 -- | Function for rotating a tangle 90 degrees.
 rotate :: Orientation -> Orientation
@@ -93,26 +88,22 @@ shift Normal = Normal
 shift Over = Under
 shift Under = Over
 
--- | Creates four new points which expand the tangle after twist/antitwist operation.
-create :: Orientation -> Z -> Double -> Point -> Point -> [Point]
-create North z by p1 p2 = [halfWay North z by p1 p2, halfWay North (shift z) by p1 p2] ++ (map (.+ ( 0,  by, Normal)) [p1, p2])
-create South z by p1 p2 = [halfWay South z by p1 p2, halfWay South (shift z) by p1 p2] ++ (map (.+ ( 0, -by, Normal)) [p1, p2])
-create West  z by p1 p2 = [halfWay West  z by p1 p2, halfWay West  (shift z) by p1 p2] ++ (map (.+ (-by,  0, Normal)) [p1, p2])
-create East  z by p1 p2 = [halfWay East  z by p1 p2, halfWay East  (shift z) by p1 p2] ++ (map (.+ ( by,  0, Normal)) [p1, p2])
+-- | Creates two new points which expand the tangle after twist/antitwist operation.
+create :: Orientation -> Double -> Point -> Point -> [Point]
+create North by p1 p2 = map (.+ ( 0,  by)) [p1, p2]
+create South by p1 p2 = map (.+ ( 0, -by)) [p1, p2]
+create West  by p1 p2 = map (.+ (-by,  0)) [p1, p2]
+create East  by p1 p2 = map (.+ ( by,  0)) [p1, p2]
 
 
 -- | Applies twist operation by expanding the tangle with four new points.
 twistTangle :: Tangle -> Z -> LinePosition -> LinePosition -> Orientation -> Tangle
 twistTangle knot z pos1 pos2 dir = let p1 = (interpretPosition pos1 knot)
                                        p2 = (interpretPosition pos2 knot)
-                                       newPoints = create dir z (sqrt (distance p1 p2))
-                                                                p1
-                                                                p2
-                                    in foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                             [(pos2, head newPoints),
-                                              (pos1, head $ tail newPoints),
-                                              (pos2, head $ tail $ tail newPoints),
-                                              (pos1, last newPoints)]
+                                       newPoints = create dir (sqrt (distance p1 p2)) p1 p2
+                                    in foldl (\knt (pos, pt, z) -> addPoint pos knt z pt) knot
+                                             [(pos2, head newPoints, z),
+                                              (pos1, last newPoints, (shift z))]
 
 -- | Expands the final tangle with four new points that extend the string ends away from tangles. This adds a nice touch to the final drawing. 
 expandTangle :: TangleWithEdges -> TangleWithEdges
@@ -120,22 +111,25 @@ expandTangle (knot, edges@(ne, nw, sw, se)) = let
                                                 byx = sqrt $ distance (interpretPosition ne knot) (interpretPosition nw knot)
                                                 byy = sqrt $ distance (interpretPosition ne knot) (interpretPosition se knot)
                                               in
-                                                (foldl (\knt (pos, pt) -> addPoint pos knt pt) knot
-                                                       [(ne, (interpretPosition ne knot) .+ (-byx * 0.8,  byy * 0.5, Normal)),
-                                                        (nw, (interpretPosition nw knot) .+ ( byx * 0.8,  byy * 0.5, Normal)),
-                                                        (sw, (interpretPosition sw knot) .+ ( byx * 0.8, -byy * 0.5, Normal)),
-                                                        (se, (interpretPosition se knot) .+ (-byx * 0.8, -byy * 0.5, Normal))],
-                                            edges)
+                                                (foldl (\knt (pos, pt) -> addPoint pos knt Normal pt) knot
+                                                       [(ne, (interpretPosition ne knot) .+ (-byx * 0.8,  byy * 0.5)),
+                                                        (nw, (interpretPosition nw knot) .+ ( byx * 0.8,  byy * 0.5)),
+                                                        (sw, (interpretPosition sw knot) .+ ( byx * 0.8, -byy * 0.5)),
+                                                        (se, (interpretPosition se knot) .+ (-byx * 0.8, -byy * 0.5))],
+                                                 edges)
 
 zeroTangle, emptyTangle :: TangleWithEdges
 -- | ZeroTangle is just two horizontal parallel strings.
-zeroTangle = (([(0, 1, Normal), (1, 1, Normal)],
-             [(0, 0, Normal), (1, 0, Normal)]),
-            (FirstA, LastA, LastB, FirstB))
--- | emptyTangle is just two strings represented as dots.
-emptyTangle = (([(0, 1, Normal)],
-              [(0, 0, Normal)]),
+zeroTangle = (([(0, 1), (1, 1)],
+               [(0, 0), (1, 0)],
+               [Normal], [Normal]),
              (FirstA, LastA, LastB, FirstB))
+-- | emptyTangle is just two strings represented as dots.
+emptyTangle = (([(0, 1)],
+                [(0, 0)],
+                [], []),
+               (FirstA, LastA, LastB, FirstB))
+               
 
 -- | The main recursive procedure which generates two sets of control points from given sequence of moves.
 generateTangle' :: [TangleMove] -> (TangleWithEdges, Orientation)
@@ -164,44 +158,37 @@ generateTangle steps = (tangle, orientation)
                        where (tangleWithEdges, orientation) = generateTangle' steps
                              tangle = fst $ expandTangle $ tangleWithEdges
 
-
 -- | 'renderTangle' takes a series of 'KnotMove's and a filename, into which it renders a SVG image representing the given tangle.
 renderTangle' :: [TangleMove] -> String -> IO ()
 renderTangle' moves filename =
   let
-    (tangle, orientation) = generateTangle moves
+    (tangle@(aline, bline, asec, bsec), orientation) = generateTangle moves
 
-    pointTo2D :: Point -> (Double, Double)
-    pointTo2D (x, y, _) = (x, y)
-
+    takeOvers [] _  = []
     takeOvers _ []  = []
-    takeOvers ((_, _, Over):ps) (l:ls) = l : takeOvers ps ls
-    takeOvers (_:ps) (_:ls) = takeOvers ps ls
+    takeOvers (Over:ss) (l:ls) = l : takeOvers ss ls
+    takeOvers (_:ss) (_:ls) = takeOvers ss ls
 
-    oversData []  = []
-    oversData (p1@(x1, y1, Over):p2@(x2, y2, _):ps) = (distance p1 p2) : oversData ps
-    oversData (_:ps) = oversData ps
+    oversData [] _ = []
+    oversData _ [] = []
+    oversData (p1:p2:ps) (Over:ss) = (distance p1 p2) : oversData (p2:ps) ss
+    oversData (_:ps) (_:ss) = oversData ps ss
 
-    lengths' tangle = map (\d -> max (d / 15.0) 0.5) $ oversData $ (fst tangle ++ snd tangle)
-
-    splinesOver which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) #  mconcat
-    splinesOver' which f tangle = (explodeTrail $ cubicSpline False (map p2 $ map pointTo2D $ which tangle)) # takeOvers (f $ which tangle) # zipWith lwL (lengths' tangle) #  mconcat
+    lineOver line sections width = (explodeTrail $ cubicSpline False (map p2 line)) # takeOvers sections # zipWith lwL widths #  mconcat
+                                   where widths = case width of
+                                                     Just w -> repeat w
+                                                     Nothing -> map (\d -> max (d / 15.0) 0.3) $ (oversData line sections)
+    lineWhole = cubicSpline False . map p2
 
     lineStyle color = lc color # lwL 0.05
 
-    lineWhole which tangle = cubicSpline False (map p2 $ map pointTo2D $ which tangle)
 
-    blineDiaOverA = splinesOver fst id   tangle # lineStyle red
-    blineDiaOverB = splinesOver fst tail tangle # lineStyle red
-    alineDiaOverA = splinesOver snd id   tangle # lineStyle black
-    alineDiaOverB = splinesOver snd tail tangle # lineStyle black
-    blineDiaWhole = lineWhole fst tangle # lineStyle red
-    alineDiaWhole = lineWhole snd tangle # lineStyle black
-
-    alineDiaOverAWhite = splinesOver' snd id   tangle # lineStyle white
-    alineDiaOverBWhite = splinesOver' snd tail tangle # lineStyle white
-    blineDiaOverAWhite = splinesOver' fst id   tangle # lineStyle white
-    blineDiaOverBWhite = splinesOver' fst tail tangle # lineStyle white
+    redWhole = lineWhole aline # lineStyle red
+    blkWhole = lineWhole bline # lineStyle black
+    redMask = lineOver aline asec Nothing # lineStyle white
+    blkMask = lineOver bline bsec Nothing # lineStyle white
+    redOver = lineOver aline asec (Just 0.05) # lineStyle red
+    blkOver = lineOver bline bsec (Just 0.05) # lineStyle black
 
     getRotation :: Orientation -> Double
     getRotation South = 1/4
@@ -209,11 +196,9 @@ renderTangle' moves filename =
     getRotation North = 3/4
     getRotation East = 4/4
 
-    diagram = (alineDiaOverA `atop` alineDiaOverB `atop`
-              blineDiaOverA `atop` blineDiaOverB `atop`
-              alineDiaOverAWhite `atop` alineDiaOverBWhite `atop`
-              blineDiaOverAWhite `atop` blineDiaOverBWhite `atop`
-              alineDiaWhole `atop` blineDiaWhole) # rotateBy (getRotation orientation)
+    diagram = (blkOver `atop` redOver `atop`
+               blkMask `atop` redMask `atop`
+               redWhole `atop` blkWhole) # rotateBy (getRotation orientation)
   in
     renderSVG filename (mkSizeSpec (Just 400.0) (Just 400.0)) (diagram  # bg white)
 
