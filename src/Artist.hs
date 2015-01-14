@@ -8,6 +8,7 @@ module Artist
 , generateTangle
 , renderTangle
 , renderTangleReversed
+, renderTangleWithPoints 
 ) where
 
 import Diagrams.Prelude hiding (Point, Line, rotate, shift, distance)
@@ -158,8 +159,8 @@ generateTangle steps = (tangle, orientation)
                              tangle = fst $ expandTangle $ tangleWithEdges
 
 -- | 'renderTangle' takes a series of 'KnotMove's and a filename, into which it renders a SVG image representing the given tangle.
-renderTangle' :: [TangleMove] -> String -> IO ()
-renderTangle' moves filename =
+renderTangle' :: Bool -> [TangleMove] -> String -> IO ()
+renderTangle' drawPoints moves filename =
   let
     ((aline, bline, asec, bsec), orientation) = generateTangle moves
 
@@ -195,7 +196,13 @@ renderTangle' moves filename =
     getRotation North = 3/4
     getRotation East = 4/4
 
-    diagram = (blkOver `atop` redOver `atop`
+    points = if drawPoints
+             then position (zip (map p2 aline) (repeat (circle 0.1 # fc darkblue # lw none))) `atop`
+                  position (zip (map p2 bline) (repeat (circle 0.1 # fc darkblue # lw none)))
+             else mempty
+
+    diagram = (points `atop`
+               blkOver `atop` redOver `atop`
                blkMask `atop` redMask `atop`
                redWhole `atop` blkWhole) # rotateBy (getRotation orientation)
   in
@@ -203,8 +210,12 @@ renderTangle' moves filename =
 
 -- | render Tangle via a set of moves required to untangle it
 renderTangleReversed :: [TangleMove] -> String -> IO ()
-renderTangleReversed = renderTangle' . reverseSteps
+renderTangleReversed = renderTangle' False . reverseSteps
+
+-- | render Tangle in a direct way, with points
+renderTangleWithPoints :: [TangleMove] -> String -> IO ()
+renderTangleWithPoints = renderTangle' True . reverse
 
 -- | render Tangle in a direct way
 renderTangle :: [TangleMove] -> String -> IO ()
-renderTangle = renderTangle' . reverse
+renderTangle = renderTangle' False . reverse
