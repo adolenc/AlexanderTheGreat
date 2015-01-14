@@ -162,22 +162,22 @@ generateTangle steps = (tangle, orientation)
 renderTangle' :: [TangleMove] -> String -> IO ()
 renderTangle' moves filename =
   let
-    (tangle@(aline, bline, asec, bsec), orientation) = generateTangle moves
+    ((aline, bline, asec, bsec), orientation) = generateTangle moves
 
-    takeOvers [] _  = []
-    takeOvers _ []  = []
-    takeOvers (Over:ss) (l:ls) = l : takeOvers ss ls
-    takeOvers (_:ss) (_:ls) = takeOvers ss ls
+    sectionsOver [] _  = []
+    sectionsOver _ []  = []
+    sectionsOver (Over:ss) (l:ls) = l : sectionsOver ss ls
+    sectionsOver (_:ss) (_:ls) = sectionsOver ss ls
 
-    oversData [] _ = []
-    oversData _ [] = []
-    oversData (p1:p2:ps) (Over:ss) = (distance p1 p2) : oversData (p2:ps) ss
-    oversData (_:ps) (_:ss) = oversData ps ss
+    oversDistance [] _ = []
+    oversDistance _ [] = []
+    oversDistance (p1:p2:ps) (Over:ss) = (distance p1 p2) : oversDistance (p2:ps) ss
+    oversDistance (_:ps) (_:ss) = oversDistance ps ss
 
-    lineOver line sections width = (explodeTrail $ cubicSpline False (map p2 line)) # takeOvers sections # zipWith lwL widths #  mconcat
+    lineOver line sections width = (explodeTrail $ cubicSpline False (map p2 line)) # sectionsOver sections # zipWith lwL widths #  mconcat
                                    where widths = case width of
                                                      Just w -> repeat w
-                                                     Nothing -> map (\d -> max (d / 15.0) 0.3) $ (oversData line sections)
+                                                     Nothing -> map (\d -> max (d / 15.0) 0.3) $ (oversDistance line sections)
     lineWhole = cubicSpline False . map p2
 
     lineStyle color = lc color # lwL 0.05
