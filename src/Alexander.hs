@@ -5,8 +5,8 @@ Description : Library that helps with untangling of the rational tangles.
 
 module Alexander
 (
-  module Data.Tangle
-, TangleMove(..)
+  module Common
+, module Data.Tangle
 , untangle
 )
 where
@@ -14,9 +14,7 @@ where
 import Data.Tangle
 import Data.KnotComplex
 import Control.Monad.VectorSpace
-
--- | Data type for all possible moves we are allowed to do with strings in a tangle
-data TangleMove = Twist | Antitwist | Rotate | Antirotate deriving (Eq, Show)
+import Common
 
 -- | Converts a tangle into its representation with a rational number.
 value :: Tangle -> Rational

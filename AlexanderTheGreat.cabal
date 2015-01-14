@@ -16,7 +16,7 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Artist, Alexander, Control.Monad.VectorSpace, Data.Tangle, Data.KnotComplex
+  exposed-modules:     Artist, Alexander, Common, Control.Monad.VectorSpace, Data.Tangle, Data.KnotComplex
   -- other-modules:       
   other-extensions:    MultiParamTypeClasses, FlexibleInstances, FunctionalDependencies, GeneralizedNewtypeDeriving, NoMonomorphismRestriction
   build-depends:       base >=4.6 && <4.7

@@ -4,7 +4,7 @@
 
 module Artist
 (
-  TangleMove(..)
+  module Common
 , generateTangle
 , renderTangle
 , renderTangleReversed
@@ -12,9 +12,8 @@ module Artist
 
 import Diagrams.Prelude hiding (Point, Line, rotate, shift, distance)
 import Diagrams.Backend.SVG
+import Common
 
--- | Data type for all possible moves we are allowed to do with strings in a tangle
-data TangleMove = Twist | Antitwist | Rotate | Antirotate deriving (Eq)
 -- | Data type for current orientation of a tangle, which tells us which string ends are going to be used in next move.
 data Orientation = West | North | East | South deriving (Show)
 -- | Data type for a string end.
